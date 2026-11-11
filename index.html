@@ -106,6 +106,19 @@ footer p{margin:0 0 6px}
 .bar b{font-family:var(--display);font-size:20px}
 .bar div:last-child{text-align:right}
 .kv small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) 128px 32px;gap:8px;align-items:center}
+.lrow input.nm{text-align:left}
+.lrow .rm{padding:4px 0;height:36px;color:var(--muted)}
+.ltot{display:flex;justify-content:space-between;font-weight:600;font-variant-numeric:tabular-nums;font-size:13.5px;border-top:1px solid var(--line);padding-top:8px}
+.guide{border:1px solid var(--accent);border-radius:10px;background:var(--accent-soft);padding:12px;display:flex;flex-direction:column;gap:8px}
+.guide>strong{font-family:var(--display);font-size:16px}
+.guide details{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.guide details>summary{cursor:pointer;font-weight:600}
+.guide ul{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.guide li{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}
+.guide li.no{display:block;color:var(--muted)}
+.guide li.no b{color:var(--bad)}
+.guide li .mini{flex:none}
 details.info{font-size:12.5px;color:var(--muted)}
 details.info>summary{cursor:pointer;color:var(--accent);font-weight:600;width:fit-content}
 details.info ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
@@ -326,6 +339,12 @@ const T = {
   IN4:['Education and medical insurance','教育及医药保险'], IN3:['Private retirement scheme, deferred annuity','私人退休计划、延期年金'],
   HL1:['Housing loan interest paid','已付房屋贷款利息'],
   what:['What can I claim?','可以申请哪些？'],
+  empTitle:['Employment income','雇佣收入'], empHint:['One line per employer. Gross amount from each EA form.','每个雇主一行，填各 EA 表格上的总额。'], empPh:['Employer','雇主'], addEmp:['+ Add employer','+ 增加雇主'],
+  bizTitle:['Business or freelance income','生意或自由职业收入'], bizHint:['One line per business. Net amount after expenses and capital allowances.','每项生意一行，填扣除费用及资本免税额后的净额。'], bizPh:['Business','生意'], addBiz:['+ Add business','+ 增加生意'],
+  total:['Total','合计'], remove:['Remove this line','删除此行'], pcbS:['Total from all EA forms','所有 EA 表格的合计'],
+  gTitle:['Paid for your parents or children? See what you can claim','为父母或子女付的费用？看看可以申请什么'],
+  gPar:['Paid for my parents or grandparents','为父母或祖父母支付的'], gChi:['Paid for my children','为子女支付的'],
+  go:['Enter here','去填写'], notOk:['Cannot be claimed:','不可申请：'],
   amt:['Amount paid','支付金额'], useMax:['Use limit','填上限'],
   hMax:['Not sure of the exact amount? "Use limit" fills in the maximum. Use it only if you paid at least that much, because relief is limited to what you actually paid.','不确定实际金额？按"填上限"会填入最高扣除额。只有在实际支付不少于该金额时才可使用，因为扣除额以实际支付为限。'],
   kEffS:['Tax per RM100 earned, on average','每赚 RM100，平均交多少税'], kMarS:['Rate on your next ringgit','下一块钱收入的税率'],
@@ -356,6 +375,29 @@ const T = {
   f2:['Rates and limits for YA 2026 were checked on 11 November 2026. Budget 2027 changes start from YA 2027 and are not included. Eligibility conditions are not tested.','2026 课税年的税率与上限已于 2026 年 11 月 11 日核对。2027 年财政预算案的修改自 2027 课税年起生效，未包含在内。本工具不审核扣除资格。'],
   f3:['Not tax advice and not affiliated with LHDN. Nothing you type leaves this device.','本工具并非税务意见，与内陆税收局 (LHDN) 无关联。您输入的资料不会离开此设备。']
 };
+const GUIDE = {
+  par: [
+    ['HP1', 'Medical and dental treatment, special needs and carer costs: up to RM8,000 in total.', '医疗、牙科、特殊需求及看护费用：合计上限 RM8,000。'],
+    ['HP2', 'Full medical check-up and vaccination: up to RM1,000, inside the same RM8,000.', '全面体检及疫苗：上限 RM1,000，计入上述 RM8,000。'],
+    ['EQ1', 'Supporting equipment for a disabled parent, such as a wheelchair or hearing aid: up to RM6,000.', '残障父母的辅助器材，如轮椅、助听器：上限 RM6,000。'],
+    ['SP1', 'Sports equipment, gym or facility fees for parents: inside your own RM1,000 sports limit.', '父母的运动器材、健身房或场地费：计入您本人的 RM1,000 运动上限。'],
+    [null, 'monthly allowance, food, rent, utilities, and insurance premiums paid for parents. Conditions also apply to the items above, for example where the treatment is given and who the carer is, so check the LHDN notes.', '给父母的生活费、伙食、房租、水电费，以及为父母支付的保险费。以上项目另有条件，例如治疗地点及看护人身份，请查阅 LHDN 说明。']
+  ],
+  chi: [
+    ['c1', 'Child relief, no receipts needed: RM2,000 per child below 18, RM8,000 per child aged 18 and above in higher education. Enter the number of children.', '子女扣除，无需收据：18 岁以下每名 RM2,000；18 岁以上就读高等教育每名 RM8,000。请填写子女人数。'],
+    ['CC1', 'Childcare, kindergarten and registered after-school care, child up to 12: up to RM3,000.', '托儿所、幼儿园及注册课后托管（12 岁或以下）：上限 RM3,000。'],
+    ['SS1', 'SSPN savings for a child, deposits less withdrawals in the year: up to RM8,000.', '为子女存入 SSPN（当年存款减提款）：上限 RM8,000。'],
+    ['HS1', 'Medical costs for a child: serious disease treatment, vaccination, dental, check-ups and mental health, inside the RM10,000 medical group.', '子女医疗费：严重疾病治疗、疫苗、牙科、体检及心理健康，计入 RM10,000 医疗组。'],
+    ['HS6', 'Learning disability diagnosis, early intervention and rehabilitation, child aged 18 or below: up to RM10,000.', '学习障碍的诊断、早期干预及康复（18 岁或以下子女）：上限 RM10,000。'],
+    ['IN1', 'Life insurance for a child, new for YA 2026: inside the RM3,000 life insurance limit.', '子女人寿保险（2026 课税年新增）：计入 RM3,000 人寿保险上限。'],
+    ['IN4', 'Education or medical insurance for a child: inside the RM4,000 limit.', '子女教育或医药保险：计入 RM4,000 上限。'],
+    ['LS1', 'Books, computer, smartphone or tablet bought for a child: inside your RM2,500 lifestyle limit.', '为子女购买的书籍、电脑、手机或平板：计入您的 RM2,500 生活方式上限。'],
+    ['SP1', 'Sports equipment and training fees for a child: inside your RM1,000 sports limit.', '子女的运动器材及训练费：计入您的 RM1,000 运动上限。'],
+    ['BF1', 'Breastfeeding equipment, child aged 2 or below, mothers only, once every two years: up to RM1,000.', '哺乳器材（子女 2 岁或以下，仅限母亲，每两年一次）：上限 RM1,000。'],
+    ['EQ1', 'Supporting equipment for a disabled child: up to RM6,000.', '残障子女的辅助器材：上限 RM6,000。'],
+    [null, 'school fees, tuition, uniforms, transport, pocket money, and a child\'s college or university fees. The education fees relief covers your own courses only. The same receipt is claimed by one parent, not both.', '学费、补习费、校服、交通费、零用钱，以及子女的学院或大学学费。教育费扣除只适用于您本人的课程。同一张收据只能由父母其中一方申请。']
+  ]
+};
 const INFO = {
   HS3: [[
     'From YA 2026: any vaccine registered with the National Pharmaceutical Regulatory Agency (NPRA).',
@@ -380,9 +422,50 @@ const fmt0 = x => Math.round(x).toLocaleString('en-MY');
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 
 const NUMS = {
-  income: [['empGross'],['empBik'],['empDed','empDedS'],['biz','bizS'],['rentGross'],['rentExp','rentExpS'],['interest'],['other'],['div']],
-  paid: [['DON','DONS'],['ZKT','ZKTS'],['levy'],['pcb'],['cp500']]
+  income: [['rentGross'],['rentExp','rentExpS'],['interest'],['other'],['div']],
+  paid: [['DON','DONS'],['ZKT','ZKTS'],['levy'],['pcb','pcbS'],['cp500']]
 };
+const MAXL = 5;
+function ensureLists(){
+  if (!Array.isArray(vals.empList) || !vals.empList.length) vals.empList = [{n: '', a: +vals.empGross || 0}];
+  if (!Array.isArray(vals.bizList) || !vals.bizList.length) vals.bizList = [{n: '', a: +vals.biz || 0}];
+  sumLists();
+}
+function sumLists(){
+  vals.empGross = vals.empList.reduce((x, y) => x + (+y.a || 0), 0);
+  vals.biz = vals.bizList.reduce((x, y) => x + (+y.a || 0), 0);
+}
+function listBlock(kind){
+  const list = vals[kind + 'List']; const box = el('div', 'grp'); box.id = 'lb_' + kind;
+  const h = el('div', 'grp-h'); h.append(el('strong', null, t(kind + 'Title'))); box.append(h, el('p', 'hint', t(kind + 'Hint')));
+  list.forEach((it, i) => {
+    const r = el('div', 'lrow');
+    const nm = el('input', 'nm'); nm.type = 'text'; nm.id = 'f_' + kind + '_n_' + i; nm.dataset.list = kind; nm.dataset.i = i; nm.dataset.f = 'n';
+    nm.placeholder = t(kind + 'Ph') + ' ' + (i + 1); nm.value = it.n || ''; nm.setAttribute('aria-label', t(kind + 'Ph') + ' ' + (i + 1)); nm.autocomplete = 'off';
+    const am = el('input'); am.type = 'text'; am.inputMode = 'decimal'; am.id = 'f_' + kind + '_a_' + i; am.dataset.list = kind; am.dataset.i = i; am.dataset.f = 'a';
+    am.placeholder = '0'; am.value = it.a ? String(it.a) : ''; am.setAttribute('aria-label', t(kind + 'Title') + ' ' + (i + 1)); am.autocomplete = 'off';
+    r.append(nm, am);
+    if (list.length > 1) { const x = el('button', 'rm', '\u00d7'); x.type = 'button'; x.id = 'rm_' + kind + '_' + i; x.dataset.rm = kind; x.dataset.i = i; x.setAttribute('aria-label', t('remove')); r.append(x); } else r.append(el('span'));
+    box.append(r);
+  });
+  if (list.length < MAXL) { const a = el('button', 'mini', t(kind === 'emp' ? 'addEmp' : 'addBiz')); a.type = 'button'; a.id = 'add_' + kind; a.dataset.add = kind; a.style.alignSelf = 'flex-start'; box.append(a); }
+  const tot = el('div', 'ltot'); tot.id = 'tot_' + kind; tot.append(el('span', null, t('total')), el('span')); box.append(tot);
+  return box;
+}
+function guideBlock(){
+  const g = el('div', 'guide'); g.id = 'guide'; g.append(el('strong', null, t('gTitle')));
+  [['par', 'gPar'], ['chi', 'gChi']].forEach(([k, tk]) => {
+    const d = el('details'); d.id = 'guide_' + k; d.append(el('summary', null, t(tk))); const ul = el('ul');
+    GUIDE[k].forEach(([code, en, zh]) => {
+      const li = el('li', code ? '' : 'no');
+      if (code) { li.append(el('span', null, lang ? zh : en)); const b = el('button', 'mini', t('go')); b.type = 'button'; b.dataset.go = code; li.append(b); }
+      else { li.append(el('b', null, t('notOk') + ' '), document.createTextNode(lang ? zh : en)); }
+      ul.append(li);
+    });
+    d.append(ul); g.append(d);
+  });
+  return g;
+}
 function numRow(key, small){
   const r = el('div', 'row'); const l = el('label'); l.htmlFor = 'f_' + key;
   l.append(el('span', null, t(key))); if (small) l.append(el('small', null, t(small)));
@@ -404,15 +487,19 @@ function section(id, titleKey, hintKey, open){
 }
 function build(){
   const open = {}; document.querySelectorAll('details.sec').forEach(d => open[d.id] = d.open);
+  const gOpen = {}; ['par', 'chi'].forEach(k => { const x = document.getElementById('guide_' + k); gOpen[k] = x ? x.open : false; });
   const form = document.getElementById('form'); form.textContent = '';
   const isOpen = (id, def) => ('sec_' + id) in open ? open['sec_' + id] : def;
+  ensureLists();
   let [d, b] = section('income', 'sIncome', 'hIncome', isOpen('income', true));
+  b.append(listBlock('emp'), numRow('empBik'), numRow('empDed', 'empDedS'), listBlock('biz'));
   NUMS.income.forEach(([k, s]) => b.append(numRow(k, s))); form.append(d);
   [d, b] = section('family', 'sFamily', 'hFamily', isOpen('family', true));
   b.append(chkRow('disSelf'), chkRow('spouse', 'spouseS'), chkRow('disSpouse'), numRow('alimony'),
            numRow('c1', 'cS'), numRow('c2'), numRow('c3'), numRow('c4'), numRow('c5'), chkRow('hl', 'hlS'), numRow('hlPrice'));
   form.append(d);
   [d, b] = section('relief', 'sRelief', 'hRelief', isOpen('relief', true));
+  b.append(guideBlock());
   const cats = [['health','catHealth'],['life','catLife'],['child','catChild'],['ins','catIns'],['home','catHome']];
   cats.forEach(([c, ck]) => {
     b.append(el('div', 'cat', t(ck)));
@@ -439,6 +526,7 @@ function build(){
   form.append(d);
   [d, b] = section('paid', 'sPaid', null, isOpen('paid', true));
   NUMS.paid.forEach(([k, s]) => b.append(numRow(k, s))); form.append(d);
+  ['par', 'chi'].forEach(k => { if (gOpen[k]) document.getElementById('guide_' + k).open = true; });
   document.querySelectorAll('[data-t]').forEach(e => e.textContent = t(e.dataset.t));
   document.documentElement.lang = lang ? 'zh-Hans' : 'en';
   document.getElementById('langEn').setAttribute('aria-pressed', String(!lang));
@@ -455,6 +543,8 @@ function relRows(r){
 const pad2 = x => String(x).padStart(2, '0');
 function stampText(d){ return t('gen') + ' ' + pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
 function render(){
+  sumLists();
+  ['emp', 'biz'].forEach(k => { const e = document.getElementById('tot_' + k); if (e) { e.lastChild.textContent = 'RM ' + fmt(k === 'emp' ? vals.empGross : vals.biz); e.style.display = vals[k + 'List'].length > 1 ? '' : 'none'; } });
   const r = compute(vals); LAST = r;
   const rt = document.getElementById('relTab'); rt.textContent = '';
   relRows(r).forEach(([k, v]) => { const tr = el('tr'); tr.append(el('td', null, k), el('td', null, fmt(v))); rt.append(tr); });
@@ -507,12 +597,22 @@ function render(){
 const parse = s => { const x = parseFloat(String(s).replace(/,/g, '')); return isFinite(x) && x > 0 ? x : 0; };
 function save(){ try { localStorage.setItem('mytax26', JSON.stringify({vals, lang, isExample})); } catch (e) {} }
 document.getElementById('form').addEventListener('input', e => {
-  const k = e.target.dataset.k; if (!k) return;
+  const ds = e.target.dataset;
+  if (ds.list) { const it = vals[ds.list + 'List'][+ds.i]; if (!it) return; if (ds.f === 'n') it.n = e.target.value.slice(0, 60); else it.a = parse(e.target.value); isExample = false; render(); save(); return; }
+  const k = ds.k; if (!k) return;
   vals[k] = e.target.type === 'checkbox' ? e.target.checked : parse(e.target.value);
   isExample = false; render(); save();
 });
 document.getElementById('form').addEventListener('click', e => {
-  const id = e.target.dataset && e.target.dataset.max; if (!id) return;
+  const ds = e.target.dataset || {};
+  if (ds.add) { const l = vals[ds.add + 'List']; if (l.length < MAXL) { l.push({n: '', a: 0}); isExample = false; build(); save(); const f = document.getElementById('f_' + ds.add + '_n_' + (l.length - 1)); if (f) f.focus(); } return; }
+  if (ds.rm) { vals[ds.rm + 'List'].splice(+ds.i, 1); isExample = false; build(); save(); return; }
+  if (ds.go) {
+    const f = document.getElementById('f_' + ds.go); if (!f) return;
+    let p = f.closest('details'); while (p) { p.open = true; p = p.parentElement && p.parentElement.closest('details'); }
+    f.scrollIntoView({block: 'center', behavior: 'smooth'}); try { f.focus({preventScroll: true}); } catch (x) { f.focus(); } return;
+  }
+  const id = ds.max; if (!id) return;
   const g = P.groups.find(x => x.id === id); const code = g.items[0][0];
   vals[code] = g.cap; const inp = document.getElementById('f_' + code); if (inp) inp.value = String(g.cap);
   isExample = false; render(); save();
