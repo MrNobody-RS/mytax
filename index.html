@@ -106,6 +106,9 @@ footer p{margin:0 0 6px}
 .bar b{font-family:var(--display);font-size:20px}
 .bar div:last-child{text-align:right}
 .kv small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+details.info{font-size:12.5px;color:var(--muted)}
+details.info>summary{cursor:pointer;color:var(--accent);font-weight:600;width:fit-content}
+details.info ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
 .mini{font-size:12px;padding:3px 9px;border-radius:999px;border-color:var(--accent);color:var(--accent);background:transparent;white-space:nowrap}
 .mini:hover{background:var(--accent-soft)}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
@@ -322,6 +325,7 @@ const T = {
   IN2:['EPF contributions','公积金缴纳'], IN5:['SOCSO and EIS','社险及就业保险'], IN1:['Life insurance or takaful','人寿保险或回教保险'],
   IN4:['Education and medical insurance','教育及医药保险'], IN3:['Private retirement scheme, deferred annuity','私人退休计划、延期年金'],
   HL1:['Housing loan interest paid','已付房屋贷款利息'],
+  what:['What can I claim?','可以申请哪些？'],
   amt:['Amount paid','支付金额'], useMax:['Use limit','填上限'],
   hMax:['Not sure of the exact amount? "Use limit" fills in the maximum. Use it only if you paid at least that much, because relief is limited to what you actually paid.','不确定实际金额？按"填上限"会填入最高扣除额。只有在实际支付不少于该金额时才可使用，因为扣除额以实际支付为限。'],
   kEffS:['Tax per RM100 earned, on average','每赚 RM100，平均交多少税'], kMarS:['Rate on your next ringgit','下一块钱收入的税率'],
@@ -351,6 +355,23 @@ const T = {
   f1:['An estimate for a resident individual under separate assessment. It does not cover non-residents, joint assessment, the 2% dividend tax, business losses or foreign income.','本工具仅为估算，适用于分开评税的税务居民个人，不涵盖非居民、合并评税、2% 股息税、生意亏损及海外收入。'],
   f2:['Rates and limits for YA 2026 were checked on 11 November 2026. Budget 2027 changes start from YA 2027 and are not included. Eligibility conditions are not tested.','2026 课税年的税率与上限已于 2026 年 11 月 11 日核对。2027 年财政预算案的修改自 2027 课税年起生效，未包含在内。本工具不审核扣除资格。'],
   f3:['Not tax advice and not affiliated with LHDN. Nothing you type leaves this device.','本工具并非税务意见，与内陆税收局 (LHDN) 无关联。您输入的资料不会离开此设备。']
+};
+const INFO = {
+  HS3: [[
+    'From YA 2026: any vaccine registered with the National Pharmaceutical Regulatory Agency (NPRA).',
+    'Already covered before 2026: influenza, pneumococcal, HPV, rotavirus, varicella (chickenpox), meningococcal, Tdap and COVID-19.',
+    'Newly covered examples: hepatitis A and B, typhoid and other travel vaccines, shingles, dengue.',
+    'For yourself, your spouse and your children. Up to RM1,000, counted inside the RM10,000 medical group.',
+    'Vaccines for your parents go under Parents and grandparents: full medical examination, vaccination.',
+    'Keep a receipt that names the vaccine. If unsure, look the product up on the NPRA website.'
+  ], [
+    '2026 课税年起：凡在国家药剂监管机构 (NPRA) 注册的疫苗都可申请。',
+    '2026 年以前已涵盖：流感、肺炎球菌、HPV、轮状病毒、水痘、脑膜炎球菌、Tdap（破伤风、白喉、百日咳）及新冠疫苗。',
+    '新纳入的例子：甲型及乙型肝炎、伤寒等旅行疫苗、带状疱疹、骨痛热症（登革热）疫苗。',
+    '适用于本人、配偶及子女。上限 RM1,000，计入 RM10,000 医疗组。',
+    '父母的疫苗费用请填在"父母及祖父母：全面体检、疫苗"一栏。',
+    '请保留列明疫苗名称的收据。如不确定，可到 NPRA 网站查询该产品。'
+  ]]
 };
 let lang = 0, vals = {}, isExample = true;
 const t = (k, ...a) => (T[k] ? T[k][lang] : k).replace(/\{(\d)\}/g, (_, i) => a[i]);
@@ -408,6 +429,7 @@ function build(){
         if (!multi) r.querySelector('label span').textContent = t('amt');
         if (sub !== null && multi) { const s2 = el('small', null, t('sub_') + ' RM' + fmt0(sub)); r.querySelector('label').append(s2); }
         box.append(r);
+        if (INFO[code]) { const d2 = el('details', 'info'); d2.id = 'info_' + code; d2.append(el('summary', null, t('what'))); const ul = el('ul'); INFO[code][lang].forEach(x => ul.append(el('li', null, x))); d2.append(ul); box.append(d2); }
       });
       const m = el('div', 'meter'); m.append(el('i')); m.id = 'm_' + g.id; box.append(m);
       const f = el('div', 'grp-f'); const a = el('span'); a.id = 'c_' + g.id; const o = el('span', 'over'); o.id = 'o_' + g.id; f.append(a, o); box.append(f);
