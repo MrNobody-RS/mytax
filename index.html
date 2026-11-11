@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Malaysia Tax Calculator YA 2026</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: form column on the left, sticky result ledger on the right; one column on phones with a fixed balance bar */
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#14231f; --muted:#5b6b66; --line:#d5dcd9;
+  --accent:#0b6b57; --accent-soft:#dcefe9; --field:#f8faf9;
+  --good:#1d7a46; --warn:#a15c00; --warn-soft:#fbeed3; --bad:#b3261e; --bad-soft:#f9dedc;
+  --display:"Bricolage Grotesque","Noto Sans SC",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1715; --surface:#17211e; --ink:#e7efec; --muted:#9bb0a9; --line:#2c3a36;
+    --accent:#58c9ab; --accent-soft:#16332c; --field:#111a18;
+    --good:#6bd08f; --warn:#f0b65a; --warn-soft:#3a2c12; --bad:#ff8a80; --bad-soft:#3d1a18;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1715; --surface:#17211e; --ink:#e7efec; --muted:#9bb0a9; --line:#2c3a36;
+  --accent:#58c9ab; --accent-soft:#16332c; --field:#111a18;
+  --good:#6bd08f; --warn:#f0b65a; --warn-soft:#3a2c12; --bad:#ff8a80; --bad-soft:#3d1a18;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-bottom:84px}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 32px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+h1{font-family:var(--display);font-size:clamp(26px,5vw,38px);line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;border-radius:0;padding:7px 12px;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface);font-weight:600}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+.grid{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:920px){.grid{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)} .result{position:sticky;top:14px;align-self:start;order:2} body{padding-bottom:0} .bar{display:none}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+details.sec,.card{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;gap:10px;align-items:baseline;justify-content:space-between}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary h2{font-family:var(--display);font-size:19px;margin:0}
+details.sec>summary .n{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+.body{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.hint{color:var(--muted);font-size:13px;margin:0}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:10px;align-items:center}
+.row label{min-width:0}
+.row small{display:block;color:var(--muted);font-size:12px}
+input[type=text]{width:100%;font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink)}
+.chk{display:flex;gap:10px;align-items:flex-start}
+.chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+.grp{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--field)}
+.grp-h{display:flex;gap:8px;justify-content:space-between;align-items:baseline;flex-wrap:wrap}
+.grp-h strong{font-weight:600}
+.grp-h .lim{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);width:0}
+.meter.full i{background:var(--warn)}
+.grp-f{display:flex;gap:8px;justify-content:space-between;font-size:12px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.over{color:var(--warn);font-weight:600}
+.cat{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:6px 0 -2px}
+.card{padding:16px}
+.result h2{font-family:var(--display);font-size:19px;margin:0 0 4px}
+.big{font-family:var(--display);font-size:clamp(34px,7vw,46px);line-height:1.05;font-variant-numeric:tabular-nums;margin:2px 0}
+.big.refund{color:var(--good)} .big.pay{color:var(--warn)}
+.tag{font-size:13px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+td{padding:5px 0;border-bottom:1px solid var(--line);vertical-align:top}
+td:last-child{text-align:right;white-space:nowrap;padding-left:10px}
+tr.t td{font-weight:600;border-bottom:2px solid var(--ink)}
+tr.m td{color:var(--muted)}
+.scroll{overflow-x:auto}
+.bands{display:flex;flex-direction:column;gap:6px}
+.band{display:grid;grid-template-columns:118px minmax(0,1fr) 84px;gap:8px;align-items:center;font-size:12.5px;font-variant-numeric:tabular-nums}
+.band .trk{height:10px;background:var(--line);border-radius:3px;overflow:hidden}
+.band .trk i{display:block;height:100%;background:var(--accent)}
+.band.off{color:var(--muted)}
+.band span:last-child{text-align:right}
+.flags{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.flags li{padding:8px 10px;border-radius:8px;font-size:13px;border-left:4px solid var(--warn);background:var(--warn-soft)}
+.flags li.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.flags li.ok{border-left-color:var(--good);background:var(--accent-soft)}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.kv div{border:1px solid var(--line);border-radius:10px;padding:10px}
+.kv b{display:block;font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
+.kv span{font-size:12px;color:var(--muted)}
+h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+footer{color:var(--muted);font-size:12.5px;margin-top:22px;max-width:75ch}
+footer p{margin:0 0 6px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--bg);display:flex;justify-content:space-between;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));font-variant-numeric:tabular-nums;z-index:5}
+.bar small{display:block;opacity:.75;font-size:11.5px}
+.bar b{font-family:var(--display);font-size:20px}
+.bar div:last-child{text-align:right}
+@media (min-width:920px){.bar{display:none}}
+@media (max-width:420px){.row{grid-template-columns:minmax(0,1fr) 122px}.band{grid-template-columns:96px minmax(0,1fr) 74px}}
+@media (prefers-reduced-motion:no-preference){.meter i,.band .trk i{transition:width .2s ease}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 data-t="title"></h1>
+      <p class="sub" data-t="sub"></p>
+    </div>
+    <div class="tools">
+      <span class="pill" id="exPill" data-t="exPill"></span>
+      <div class="seg" role="group" aria-label="Language">
+        <button type="button" id="langEn" aria-pressed="true">EN</button>
+        <button type="button" id="langZh" aria-pressed="false">中文</button>
+      </div>
+      <button type="button" id="btnClear" data-t="clear"></button>
+      <button type="button" id="btnExample" data-t="example"></button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="col result" aria-live="polite">
+      <div class="card">
+        <h2 data-t="resTitle"></h2>
+        <div class="tag" id="balLabel"></div>
+        <div class="big" id="balBig"></div>
+        <div class="kv">
+          <div><b id="kCI"></b><span data-t="kCI"></span></div>
+          <div><b id="kTax"></b><span data-t="kTax"></span></div>
+          <div><b id="kEff"></b><span data-t="kEff"></span></div>
+          <div><b id="kMar"></b><span data-t="kMar"></span></div>
+        </div>
+        <h3 data-t="hComp"></h3>
+        <div class="scroll"><table id="comp"></table></div>
+        <h3 data-t="hBands"></h3>
+        <div class="bands" id="bands"></div>
+        <h3 data-t="hFlags"></h3>
+        <ul class="flags" id="flags"></ul>
+      </div>
+    </section>
+
+    <section class="col" id="form"></section>
+  </div>
+
+  <footer>
+    <p data-t="f1"></p><p data-t="f2"></p><p data-t="f3"></p>
+  </footer>
+</div>
+
+<div class="bar" aria-hidden="true">
+  <div><small data-t="kTax"></small><b id="barTax"></b></div>
+  <div><small id="barLabel"></small><b id="barBal"></b></div>
+</div>
+
+<script>
+/* ===== PURE-START ===== */
+const P = {
+  ya: 2026,
+  bands: [[0,0],[5000,.01],[20000,.03],[35000,.06],[50000,.11],[70000,.19],[100000,.25],[400000,.26],[600000,.28],[2000000,.30]],
+  rebThr: 35000, rebSelf: 400, rebSpouse: 400, donPct: .10, divThr: 100000,
+  self: 9000, disSelf: 7000, spouse: 4000, disSpouse: 6000,
+  c1: 2000, c2: 2000, c3: 8000, c4: 8000, c5: 8000,
+  hlP1: 500000, hlC1: 7000, hlP2: 750000, hlC2: 5000,
+  groups: [
+    {id:'parents', cat:'health', cap:8000,  items:[['HP1',null],['HP2',1000]]},
+    {id:'health',  cat:'health', cap:10000, items:[['HS1',null],['HS2',null],['HS3',1000],['HS4',1000],['HS5',1000],['HS6',10000]]},
+    {id:'EQ1', cat:'health', cap:6000, items:[['EQ1',null]]},
+    {id:'edu', cat:'life', cap:7000, items:[['ED1',null],['ED2',2000]]},
+    {id:'LS1', cat:'life', cap:2500, items:[['LS1',null]]},
+    {id:'SP1', cat:'life', cap:1000, items:[['SP1',null]]},
+    {id:'TR1', cat:'life', cap:1000, items:[['TR1',null]]},
+    {id:'GR1', cat:'life', cap:2500, items:[['GR1',null]]},
+    {id:'CC1', cat:'child', cap:3000, items:[['CC1',null]]},
+    {id:'SS1', cat:'child', cap:8000, items:[['SS1',null]]},
+    {id:'BF1', cat:'child', cap:1000, items:[['BF1',null]]},
+    {id:'IN2', cat:'ins', cap:4000, items:[['IN2',null]]},
+    {id:'IN5', cat:'ins', cap:350,  items:[['IN5',null]]},
+    {id:'IN1', cat:'ins', cap:3000, items:[['IN1',null]]},
+    {id:'IN4', cat:'ins', cap:4000, items:[['IN4',null]]},
+    {id:'IN3', cat:'ins', cap:3000, items:[['IN3',null]]},
+    {id:'HL1', cat:'home', cap:null, items:[['HL1',null]]}
+  ]
+};
+const r2 = x => Math.round((x + Number.EPSILON) * 100) / 100;
+function taxOn(ci){
+  let t = 0; const out = [];
+  P.bands.forEach((b, i) => {
+    const up = i + 1 < P.bands.length ? P.bands[i + 1][0] : Infinity;
+    const inc = Math.max(Math.min(ci, up) - b[0], 0);
+    const tx = r2(inc * b[1]); t += tx;
+    out.push({lo: b[0], up, rate: b[1], inc, tax: tx});
+  });
+  return {tax: r2(t), bands: out};
+}
+function compute(v){
+  const n = k => +v[k] || 0;
+  const emp = Math.max(n('empGross') + n('empBik') - n('empDed'), 0);
+  const rent = Math.max(n('rentGross') - n('rentExp'), 0);
+  const rentLoss = Math.max(n('rentExp') - n('rentGross'), 0);
+  const agg = emp + n('biz') + rent + n('interest') + n('other');
+  const don = Math.min(n('DON'), r2(P.donPct * agg));
+  const total = agg - don;
+  const status = [
+    ['self', P.self],
+    ['disSelf', v.disSelf ? P.disSelf : 0],
+    ['spouse', Math.min(P.spouse, (v.spouse ? P.spouse : 0) + n('alimony'))],
+    ['disSpouse', v.spouse && v.disSpouse ? P.disSpouse : 0],
+    ['c1', n('c1') * P.c1], ['c2', n('c2') * P.c2], ['c3', n('c3') * P.c3],
+    ['c4', n('c4') * P.c4], ['c5', Math.min(n('c5'), n('c4')) * P.c5]
+  ];
+  const hlCap = !v.hl ? 0 : n('hlPrice') <= P.hlP1 ? P.hlC1 : n('hlPrice') <= P.hlP2 ? P.hlC2 : 0;
+  const groups = P.groups.map(g => {
+    const cap = g.cap === null ? hlCap : g.cap;
+    let spent = 0, counted = 0;
+    g.items.forEach(([c, sub]) => { const a = n(c); spent += a; counted += sub === null ? a : Math.min(a, sub); });
+    const claim = Math.min(counted, cap);
+    return {id: g.id, cap, spent, claim, lost: r2(spent - claim)};
+  });
+  const relStatus = status.reduce((s, x) => s + x[1], 0);
+  const relPaid = groups.reduce((s, g) => s + g.claim, 0);
+  const reliefs = r2(relStatus + relPaid);
+  const ci = Math.max(r2(total - reliefs), 0);
+  const tb = taxOn(ci);
+  const rebSelf = ci <= P.rebThr ? P.rebSelf : 0;
+  const rebSpouse = ci <= P.rebThr && v.spouse ? P.rebSpouse : 0;
+  const rebates = Math.min(rebSelf + rebSpouse + n('ZKT') + n('levy'), tb.tax);
+  const net = r2(tb.tax - rebates);
+  const paid = n('pcb') + n('cp500');
+  const balance = r2(net - paid);
+  let mar = 0; P.bands.forEach(b => { if (ci >= b[0]) mar = b[1]; });
+  return {emp, rent, rentLoss, agg, don, donPaid: n('DON'), total, status, relStatus, relPaid, reliefs, groups, ci,
+          tax: tb.tax, bands: tb.bands, rebSelf, rebSpouse, zakat: n('ZKT'), levy: n('levy'), rebates, net, paid, balance,
+          eff: agg ? net / agg : 0, mar, lost: r2(groups.reduce((s, g) => s + g.lost, 0)), div: n('div'), biz: n('biz')};
+}
+const EXAMPLE = {empGross:108000, biz:6000, rentGross:18000, rentExp:7500, div:3000, c1:1, pcb:7800,
+  HP1:2350, HP2:1200, HS3:95, HS4:2130, HS5:780, ED2:1800, LS1:4773.5, SP1:1260, TR1:264, CC1:2400, SS1:3600,
+  IN1:2640, IN2:11880, IN3:3000, IN4:2880, IN5:414.6, DON:500};
+/* ===== PURE-END ===== */
+
+const T = {
+  title:['Malaysia Tax Calculator YA 2026','马来西亚个人所得税计算器 2026 课税年'],
+  sub:['For a tax-resident individual, income earned in 2026 and filed in 2027. Enter what you paid in full. The limits are applied for you.','适用于税务居民个人，2026 年收入，2027 年报税。请填写实际支付的全额，系统会自动套用扣除上限。'],
+  exPill:['Example figures','示例数字'], clear:['Clear all','全部清空'], example:['Load example','载入示例'],
+  resTitle:['Your result','计算结果'], kCI:['Chargeable income','应课税收入'], kTax:['Tax for the year','全年税额'],
+  kEff:['Effective rate','实际税率'], kMar:['Marginal rate','边际税率'],
+  hComp:['Computation','计算明细'], hBands:['Tax by band','各税阶税额'], hFlags:['Points to check','注意事项'],
+  balPay:['Balance of tax to pay','尚需补缴税款'], balRef:['Tax overpaid, refund due','多缴税款，可获退税'], balNil:['Nothing more to pay','无需补缴'],
+  barPay:['To pay','需补缴'], barRef:['Refund','退税'],
+  sIncome:['Income','收入'], sFamily:['You and your family','个人与家庭'], sRelief:['Reliefs for amounts paid','按支出申请的扣除'], sPaid:['Donations, zakat and tax paid','捐款、天课与已缴税款'],
+  hIncome:['Use the figures on your EA form. Business income is entered after expenses.','请使用 EA 表格上的数字。生意收入请填扣除费用后的净额。'],
+  hFamily:['These reliefs depend on your status, not on receipts.','这些扣除取决于个人状况，无需收据。'],
+  hRelief:['Type the total you paid for each item in 2026. Keep every receipt for 7 years.','请填写 2026 年每个项目的支付总额。所有收据须保存 7 年。'],
+  empGross:['Employment income, gross','雇佣收入（总额）'], empBik:['Benefits in kind','实物福利'], empDed:['Employment deductions','雇佣收入可扣除项'],
+  empDedS:['Such as professional subscriptions','例如专业团体会费'],
+  biz:['Business or freelance income, net','生意或自由职业收入（净额）'], bizS:['After expenses and capital allowances','已扣除费用及资本免税额'],
+  rentGross:['Rental income, gross','租金收入（总额）'], rentExp:['Rental expenses','租金相关费用'], rentExpS:['Assessment, quit rent, loan interest, repairs, insurance','门牌税、地税、贷款利息、维修、保险'],
+  interest:['Taxable interest','应课税利息'], other:['Other taxable income','其他应课税收入'],
+  div:['Dividends received (not taxed here)','已收股息（此处不计税）'],
+  disSelf:['I am a registered disabled individual','本人为注册残障人士'], spouse:['Claim spouse relief','申请配偶扣除'],
+  spouseS:['Spouse has no income, or joint assessment in your name','配偶无收入，或以您的名义合并评税'],
+  disSpouse:['My spouse is disabled','配偶为残障人士'], alimony:['Alimony paid to former wife','支付前妻的赡养费'],
+  c1:['Children below 18','18 岁以下子女'], c2:['Children 18+, pre-university','18 岁以上子女（大学预科）'], c3:['Children 18+, higher education','18 岁以上子女（高等教育）'],
+  c4:['Disabled children','残障子女'], c5:['of which in higher education','其中就读高等教育'], cS:['Number. Enter 0.5 if shared with your spouse','人数；与配偶平分可填 0.5'],
+  hl:['Eligible for first-home loan interest relief','符合首购房屋贷款利息扣除资格'], hlS:['Agreement signed 1 Jan 2025 to 31 Dec 2027','买卖合约于 2025 年 1 月 1 日至 2027 年 12 月 31 日签署'],
+  hlPrice:['Property price','房屋价格'],
+  catHealth:['Health and parents','医疗与父母'], catLife:['Education and lifestyle','教育与生活'], catChild:['Children','子女'], catIns:['EPF, insurance and retirement','公积金、保险与退休'], catHome:['Home','房屋'],
+  gparents:['Parents and grandparents','父母及祖父母'], ghealth:['Medical, self, spouse and child','本人、配偶及子女医疗'], gedu:['Education fees, self','本人教育费'],
+  HP1:['Medical treatment, dental, special needs, carer','医疗、牙科、特殊需求、看护'], HP2:['Full medical examination, vaccination','全面体检、疫苗'],
+  HS1:['Serious disease treatment','严重疾病治疗'], HS2:['Fertility treatment','生育治疗'], HS3:['Vaccination','疫苗接种'], HS4:['Dental','牙科'],
+  HS5:['Medical check-up, screening, mental health','体检、疾病筛查、心理健康'], HS6:['Learning disability, child 18 or below','学习障碍（18 岁或以下子女）'],
+  EQ1:['Supporting equipment for a disabled person','残障人士辅助器材'], ED1:['Approved courses and qualifications','认可课程及资格'], ED2:['Upskilling courses','技能提升课程'],
+  LS1:['Lifestyle: books, computer, phone, internet','生活方式：书籍、电脑、手机、网络'], SP1:['Sports equipment, gym, facility fees','运动器材、健身房、场地费'],
+  TR1:['Domestic tourism entrance fees','国内旅游景点门票'], TR1S:['YA 2026 only','仅限 2026 课税年'],
+  GR1:['EV charger, composting machine, food waste grinder, CCTV','电动车充电设施、堆肥机、厨余处理机、闭路电视'],
+  CC1:['Childcare, kindergarten, after-school care','托儿所、幼儿园、课后托管'], CC1S:['Registered centres, child up to 12','注册机构，12 岁或以下子女'],
+  SS1:['SSPN net deposit','SSPN 净存款'], BF1:['Breastfeeding equipment','哺乳器材'],
+  IN2:['EPF contributions','公积金缴纳'], IN5:['SOCSO and EIS','社险及就业保险'], IN1:['Life insurance or takaful','人寿保险或回教保险'],
+  IN4:['Education and medical insurance','教育及医药保险'], IN3:['Private retirement scheme, deferred annuity','私人退休计划、延期年金'],
+  HL1:['Housing loan interest paid','已付房屋贷款利息'],
+  amt:['Amount paid','支付金额'], sub_:['up to','上限'], limit:['Limit','上限'], claim:['Claim','可扣除'], overBy:['Not claimable','不可扣除'],
+  DON:['Approved donations','认可捐款'], DONS:['Limited to 10% of aggregate income','以总收入的 10% 为限'], ZKT:['Zakat or fitrah','天课'], ZKTS:['Deducted from tax, not from income','直接抵扣税额，而非收入'],
+  levy:['Departure levy rebate','离境税回扣'], pcb:['PCB / MTD deducted','已扣预扣税 (PCB)'], cp500:['CP500 instalments paid','已缴 CP500 分期税款'],
+  lEmp:['Employment income','雇佣收入'], lBiz:['Business income','生意收入'], lRent:['Rental income, net','租金收入（净额）'], lInt:['Interest and other income','利息及其他收入'],
+  lAgg:['Aggregate income','总收入'], lDon:['Less approved donations','减：认可捐款'], lTot:['Total income','收入总额'],
+  lRelS:['Less reliefs, personal status','减：个人状况扣除'], lRelP:['Less reliefs, amounts paid','减：按支出扣除'], lCI:['Chargeable income','应课税收入'],
+  lTax:['Income tax','所得税'], lReb:['Less rebates','减：回扣'], lNet:['Tax for the year','全年税额'], lPaid:['Less tax already paid','减：已缴税款'], lBal:['Balance payable / (overpaid)','应补缴 /（多缴）'],
+  fLost:['RM{0} was paid but cannot be claimed because it is over a limit.','有 RM{0} 的支出因超过上限而无法扣除。'],
+  fReb:['Chargeable income is RM35,000 or below, so the RM400 rebate applies.','应课税收入不超过 RM35,000，可享 RM400 回扣。'],
+  fDiv:['Dividends are above RM100,000. The 2% dividend tax is not computed here.','股息超过 RM100,000。本工具不计算 2% 股息税。'],
+  fBiz:['You have business income, so you file Form B, not Form BE.','您有生意收入，须提交 B 表格，而非 BE 表格。'],
+  fRent:['Rental expenses exceed rental income by RM{0}. The loss is not set off against other income.','租金费用超出租金收入 RM{0}。此亏损不可抵扣其他收入。'],
+  fDon:['Donations above 10% of aggregate income are not deducted (RM{0} left out).','超过总收入 10% 的捐款不可扣除（RM{0} 未计入）。'],
+  fNext:['Each further RM1,000 of relief saves about RM{0} in tax.','每增加 RM1,000 扣除额，约可节省 RM{0} 税款。'],
+  fOk:['No issues found.','未发现问题。'],
+  above:['Above','超过'],
+  f1:['An estimate for a resident individual under separate assessment. It does not cover non-residents, joint assessment, the 2% dividend tax, business losses or foreign income.','本工具仅为估算，适用于分开评税的税务居民个人，不涵盖非居民、合并评税、2% 股息税、生意亏损及海外收入。'],
+  f2:['Rates and limits for YA 2026 were checked on 11 November 2026. Budget 2027 changes start from YA 2027 and are not included. Eligibility conditions are not tested.','2026 课税年的税率与上限已于 2026 年 11 月 11 日核对。2027 年财政预算案的修改自 2027 课税年起生效，未包含在内。本工具不审核扣除资格。'],
+  f3:['Not tax advice and not affiliated with LHDN. Nothing you type leaves this device.','本工具并非税务意见，与内陆税收局 (LHDN) 无关联。您输入的资料不会离开此设备。']
+};
+let lang = 0, vals = {}, isExample = true;
+const t = (k, ...a) => (T[k] ? T[k][lang] : k).replace(/\{(\d)\}/g, (_, i) => a[i]);
+const fmt = x => (x < 0 ? '(' : '') + Math.abs(x).toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + (x < 0 ? ')' : '');
+const fmt0 = x => Math.round(x).toLocaleString('en-MY');
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+
+const NUMS = {
+  income: [['empGross'],['empBik'],['empDed','empDedS'],['biz','bizS'],['rentGross'],['rentExp','rentExpS'],['interest'],['other'],['div']],
+  paid: [['DON','DONS'],['ZKT','ZKTS'],['levy'],['pcb'],['cp500']]
+};
+function numRow(key, small){
+  const r = el('div', 'row'); const l = el('label'); l.htmlFor = 'f_' + key;
+  l.append(el('span', null, t(key))); if (small) l.append(el('small', null, t(small)));
+  const i = el('input'); i.type = 'text'; i.inputMode = 'decimal'; i.id = 'f_' + key; i.dataset.k = key; i.autocomplete = 'off';
+  i.value = vals[key] ? String(vals[key]) : ''; i.placeholder = '0';
+  r.append(l, i); return r;
+}
+function chkRow(key, small){
+  const r = el('label', 'chk'); const i = el('input'); i.type = 'checkbox'; i.id = 'f_' + key; i.dataset.k = key; i.checked = !!vals[key];
+  const s = el('span'); s.append(el('span', null, t(key)));
+  if (small) { const sm = el('small', null, t(small)); sm.style.cssText = 'display:block;color:var(--muted);font-size:12px'; s.append(sm); }
+  r.append(i, s); return r;
+}
+function section(id, titleKey, hintKey, open){
+  const d = el('details', 'sec'); d.id = 'sec_' + id; d.open = open;
+  const s = el('summary'); s.append(el('h2', null, t(titleKey))); const n = el('span', 'n'); n.id = 'sum_' + id; s.append(n);
+  const b = el('div', 'body'); if (hintKey) b.append(el('p', 'hint', t(hintKey)));
+  d.append(s, b); return [d, b];
+}
+function build(){
+  const open = {}; document.querySelectorAll('details.sec').forEach(d => open[d.id] = d.open);
+  const form = document.getElementById('form'); form.textContent = '';
+  const isOpen = (id, def) => ('sec_' + id) in open ? open['sec_' + id] : def;
+  let [d, b] = section('income', 'sIncome', 'hIncome', isOpen('income', true));
+  NUMS.income.forEach(([k, s]) => b.append(numRow(k, s))); form.append(d);
+  [d, b] = section('family', 'sFamily', 'hFamily', isOpen('family', true));
+  b.append(chkRow('disSelf'), chkRow('spouse', 'spouseS'), chkRow('disSpouse'), numRow('alimony'),
+           numRow('c1', 'cS'), numRow('c2'), numRow('c3'), numRow('c4'), numRow('c5'), chkRow('hl', 'hlS'), numRow('hlPrice'));
+  form.append(d);
+  [d, b] = section('relief', 'sRelief', 'hRelief', isOpen('relief', true));
+  const cats = [['health','catHealth'],['life','catLife'],['child','catChild'],['ins','catIns'],['home','catHome']];
+  cats.forEach(([c, ck]) => {
+    b.append(el('div', 'cat', t(ck)));
+    P.groups.filter(g => g.cat === c).forEach(g => {
+      const box = el('div', 'grp'); box.id = 'g_' + g.id;
+      const h = el('div', 'grp-h'); const multi = g.items.length > 1;
+      h.append(el('strong', null, multi ? t('g' + g.id) : t(g.items[0][0]))); const lim = el('span', 'lim'); lim.id = 'lim_' + g.id; h.append(lim); box.append(h);
+      g.items.forEach(([code, sub]) => {
+        const sm = T[code + 'S'] ? code + 'S' : null;
+        const r = numRow(code, sm);
+        if (!multi) r.querySelector('label span').textContent = t('amt');
+        if (sub !== null && multi) { const s2 = el('small', null, t('sub_') + ' RM' + fmt0(sub)); r.querySelector('label').append(s2); }
+        box.append(r);
+      });
+      const m = el('div', 'meter'); m.append(el('i')); m.id = 'm_' + g.id; box.append(m);
+      const f = el('div', 'grp-f'); const a = el('span'); a.id = 'c_' + g.id; const o = el('span', 'over'); o.id = 'o_' + g.id; f.append(a, o); box.append(f);
+      b.append(box);
+    });
+  });
+  form.append(d);
+  [d, b] = section('paid', 'sPaid', null, isOpen('paid', true));
+  NUMS.paid.forEach(([k, s]) => b.append(numRow(k, s))); form.append(d);
+  document.querySelectorAll('[data-t]').forEach(e => e.textContent = t(e.dataset.t));
+  document.documentElement.lang = lang ? 'zh-Hans' : 'en';
+  document.getElementById('langEn').setAttribute('aria-pressed', String(!lang));
+  document.getElementById('langZh').setAttribute('aria-pressed', String(!!lang));
+  render();
+}
+function render(){
+  const r = compute(vals);
+  document.getElementById('exPill').style.display = isExample ? '' : 'none';
+  const big = document.getElementById('balBig');
+  big.textContent = 'RM ' + fmt(Math.abs(r.balance)); big.className = 'big ' + (r.balance < 0 ? 'refund' : r.balance > 0 ? 'pay' : '');
+  const lab = r.balance < 0 ? t('balRef') : r.balance > 0 ? t('balPay') : t('balNil');
+  document.getElementById('balLabel').textContent = lab;
+  document.getElementById('kCI').textContent = fmt0(r.ci); document.getElementById('kTax').textContent = fmt(r.net);
+  document.getElementById('kEff').textContent = (r.eff * 100).toFixed(1) + '%'; document.getElementById('kMar').textContent = (r.mar * 100).toFixed(0) + '%';
+  document.getElementById('barTax').textContent = 'RM ' + fmt(r.net);
+  document.getElementById('barBal').textContent = 'RM ' + fmt(Math.abs(r.balance));
+  document.getElementById('barLabel').textContent = r.balance < 0 ? t('barRef') : t('barPay');
+  const rows = [['lEmp', r.emp], ['lBiz', r.biz], ['lRent', r.rent], ['lInt', (+vals.interest || 0) + (+vals.other || 0)], ['lAgg', r.agg, 't'],
+    ['lDon', -r.don, 'm'], ['lTot', r.total], ['lRelS', -r.relStatus, 'm'], ['lRelP', -r.relPaid, 'm'], ['lCI', r.ci, 't'],
+    ['lTax', r.tax], ['lReb', -r.rebates, 'm'], ['lNet', r.net, 't'], ['lPaid', -r.paid, 'm'], ['lBal', r.balance, 't']];
+  const tb = document.getElementById('comp'); tb.textContent = '';
+  rows.forEach(([k, v, c]) => { const tr = el('tr', c || ''); tr.append(el('td', null, t(k)), el('td', null, fmt(v))); tb.append(tr); });
+  const bd = document.getElementById('bands'); bd.textContent = '';
+  const maxT = Math.max(...r.bands.map(b => b.tax), 1);
+  r.bands.forEach(b => {
+    const row = el('div', 'band' + (b.inc ? '' : ' off'));
+    const name = (b.up === Infinity ? t('above') + ' ' + fmt0(b.lo) : fmt0(b.lo) + ' – ' + fmt0(b.up)) ;
+    const trk = el('span', 'trk'); const i = el('i'); i.style.width = (b.tax / maxT * 100) + '%'; trk.append(i);
+    row.append(el('span', null, name + ' · ' + (b.rate * 100).toFixed(0) + '%'), trk, el('span', null, fmt(b.tax))); bd.append(row);
+  });
+  r.groups.forEach(g => {
+    const pct = g.cap ? Math.min(g.claim / g.cap, 1) * 100 : 0; const m = document.getElementById('m_' + g.id);
+    m.firstChild.style.width = pct + '%'; m.className = 'meter' + (g.lost > 0 ? ' full' : '');
+    document.getElementById('lim_' + g.id).textContent = t('limit') + ' RM' + fmt0(g.cap);
+    document.getElementById('c_' + g.id).textContent = t('claim') + ' RM' + fmt(g.claim);
+    document.getElementById('o_' + g.id).textContent = g.lost > 0 ? t('overBy') + ' RM' + fmt(g.lost) : '';
+  });
+  document.getElementById('sum_income').textContent = 'RM ' + fmt0(r.agg);
+  document.getElementById('sum_family').textContent = 'RM ' + fmt0(r.relStatus);
+  document.getElementById('sum_relief').textContent = 'RM ' + fmt0(r.relPaid);
+  document.getElementById('sum_paid').textContent = 'RM ' + fmt0(r.paid);
+  const fl = document.getElementById('flags'); fl.textContent = '';
+  const add = (txt, cls) => fl.append(el('li', cls || '', txt));
+  if (r.div > P.divThr) add(t('fDiv'), 'bad');
+  if (r.rentLoss > 0) add(t('fRent', fmt(r.rentLoss)));
+  if (r.donPaid > r.don) add(t('fDon', fmt(r.donPaid - r.don)));
+  if (r.lost > 0) add(t('fLost', fmt(r.lost)));
+  if (r.biz) add(t('fBiz'));
+  if (r.agg > 0 && r.ci <= P.rebThr) add(t('fReb'), 'ok');
+  if (r.mar > 0) add(t('fNext', fmt0(1000 * r.mar)), 'ok');
+  if (!fl.children.length) add(t('fOk'), 'ok');
+}
+const parse = s => { const x = parseFloat(String(s).replace(/,/g, '')); return isFinite(x) && x > 0 ? x : 0; };
+function save(){ try { localStorage.setItem('mytax26', JSON.stringify({vals, lang, isExample})); } catch (e) {} }
+document.getElementById('form').addEventListener('input', e => {
+  const k = e.target.dataset.k; if (!k) return;
+  vals[k] = e.target.type === 'checkbox' ? e.target.checked : parse(e.target.value);
+  isExample = false; render(); save();
+});
+document.getElementById('btnClear').addEventListener('click', () => { vals = {}; isExample = false; build(); save(); });
+document.getElementById('btnExample').addEventListener('click', () => { vals = {...EXAMPLE}; isExample = true; build(); save(); });
+document.getElementById('langEn').addEventListener('click', () => { lang = 0; build(); save(); });
+document.getElementById('langZh').addEventListener('click', () => { lang = 1; build(); save(); });
+try { const s = JSON.parse(localStorage.getItem('mytax26') || 'null'); if (s && s.vals) { vals = s.vals; lang = s.lang ? 1 : 0; isExample = !!s.isExample; } else vals = {...EXAMPLE}; }
+catch (e) { vals = {...EXAMPLE}; }
+build();
+try {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg && tg.initData) {
+    tg.ready(); tg.expand();
+    if (tg.colorScheme) document.documentElement.setAttribute('data-theme', tg.colorScheme);
+    tg.onEvent('themeChanged', () => document.documentElement.setAttribute('data-theme', tg.colorScheme));
+  }
+} catch (e) {}
+</script>
+</body>
+</html>
