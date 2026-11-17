@@ -60,6 +60,7 @@ details.sec>summary .n{color:var(--muted);font-variant-numeric:tabular-nums;font
 .row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:10px;align-items:center}
 .row label{min-width:0}
 .row small{display:block;color:var(--muted);font-size:12px}
+input[type=text]:disabled{opacity:.45;cursor:not-allowed}
 input[type=text]{width:100%;font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink)}
 .chk{display:flex;gap:10px;align-items:flex-start}
 .chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
@@ -321,7 +322,10 @@ const T = {
   empGross:['Employment income, gross','雇佣收入（总额）'], empBik:['Benefits in kind','实物福利'], empDed:['Employment deductions','雇佣收入可扣除项'],
   empDedS:['Such as professional subscriptions','例如专业团体会费'],
   biz:['Business or freelance income, net','生意或自由职业收入（净额）'], bizS:['After expenses and capital allowances','已扣除费用及资本免税额'],
-  rentGross:['Rental income, gross','租金收入（总额）'], rentExp:['Rental expenses','租金相关费用'], rentExpS:['Assessment, quit rent, loan interest, repairs, insurance','门牌税、地税、贷款利息、维修、保险'],
+  rentGross:['Rental income, gross','租金收入（总额）'], rentExp:['Rental expenses','租金相关费用'], rentExpS:['For the rented property only: assessment, quit rent, loan interest, repairs, insurance','仅限出租的房产：门牌税、地税、贷款利息、维修、保险'],
+  rentTitle:['Rental income','租金收入'], rentHint:['Fill this in only if you rent out a property. Costs of the home you live in (assessment, quit rent, loan interest, repairs) cannot be claimed here.','只有出租房产才需要填写。自住房屋的费用（门牌税、地税、贷款利息、维修）不能在这里申请。'],
+  rentExpOff:['Enter rental income first','请先填写租金收入'],
+  fRentNone:['Rental expenses of RM{0} are ignored because no rental income is entered. Expenses on your own home cannot be claimed.','未填写租金收入，RM{0} 的租金费用不计入。自住房屋的费用不可申请。'],
   interest:['Taxable interest','应课税利息'], other:['Other taxable income','其他应课税收入'],
   div:['Dividends from Malaysian companies','马来西亚公司股息'], divS:['Total received in 2026. 2% tax applies only above RM100,000','2026 年收到的总额。超过 RM100,000 才征 2% 股息税'],
   divWhat:['Which dividends count?','哪些股息要算？'],
@@ -384,7 +388,7 @@ const T = {
   fOk:['No issues found.','未发现问题。'],
   above:['Above','超过'],
   f1:['An estimate for a resident individual under separate assessment. It does not cover non-residents, joint assessment, the 2% tax on LLP profit distributions, business losses or foreign income.','本工具仅为估算，适用于分开评税的税务居民个人，不涵盖非居民、合并评税、有限责任合伙 (LLP) 盈利分配的 2% 税、生意亏损及海外收入。'],
-  f2:['Rates and limits for YA 2026 were checked on 11 November 2026, and the 2% dividend tax on 15 November 2026. Budget 2027 changes start from YA 2027 and are not included. Eligibility conditions are not tested.','2026 课税年的税率与上限已于 2026 年 11 月 11 日核对，2% 股息税已于 2026 年 11 月 15 日核对。2027 年财政预算案的修改自 2027 课税年起生效，未包含在内。本工具不审核扣除资格。'],
+  f2:['Rates and limits for YA 2026 were checked on 11 November 2026, and the 2% dividend tax on 17 November 2026. Budget 2027 changes start from YA 2027 and are not included. Eligibility conditions are not tested.','2026 课税年的税率与上限已于 2026 年 11 月 11 日核对，2% 股息税已于 2026 年 11 月 17 日核对。2027 年财政预算案的修改自 2027 课税年起生效，未包含在内。本工具不审核扣除资格。'],
   f3:['Not tax advice and not affiliated with LHDN. Nothing you type leaves this device.','本工具并非税务意见，与内陆税收局 (LHDN) 无关联。您输入的资料不会离开此设备。']
 };
 const GUIDE = {
@@ -417,7 +421,7 @@ const INFO = {
     'Do not count: EPF, LTAT, ASNB (ASB, ASM and similar) and unit trust distributions.',
     'Do not count: dividends from outside Malaysia, co-operatives, closed-end funds and Labuan entities.',
     'Do not count: dividends paid out of pioneer status, reinvestment allowance or exempt shipping profits. The dividend voucher normally says so.',
-    'LLP profit distributions are a separate 2% tax from YA 2026 and are not computed here.',
+    'LLP profit distributions above RM100,000 are also taxed at 2% from YA 2026. They are not computed here, so do not add them to this box.',
     'Keep every dividend voucher for 7 years.'
   ], [
     '要算：马来西亚公司派发的股息，包括上市公司 (Bursa) 和私人有限公司 (Sdn Bhd)，现金或实物皆算，通过代名人 (nominee) 持股的也算。',
@@ -425,7 +429,7 @@ const INFO = {
     '不算：公积金 (EPF)、武装部队基金 (LTAT)、ASNB（ASB、ASM 等）及单位信托的分红。',
     '不算：来自马来西亚境外的股息，以及合作社、封闭式基金和纳闽 (Labuan) 实体的股息。',
     '不算：从新兴工业地位、再投资津贴或免税船运盈利中派发的股息。股息单上通常会注明。',
-    '有限责任合伙 (LLP) 的盈利分配自 2026 课税年起另征 2% 税，本工具不计算。',
+    '有限责任合伙 (LLP) 的盈利分配超过 RM100,000 的部分，自 2026 课税年起同样征 2% 税。本工具不计算，请勿填入此栏。',
     '所有股息单须保存 7 年。'
   ]],
   HS3: [[
@@ -451,7 +455,7 @@ const fmt0 = x => Math.round(x).toLocaleString('en-MY');
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 
 const NUMS = {
-  income: [['rentGross'],['rentExp','rentExpS'],['interest'],['other'],['div','divS']],
+  income: [['interest'],['other'],['div','divS']],
   paid: [['DON','DONS'],['ZKT','ZKTS'],['levy'],['pcb','pcbS'],['cp500']]
 };
 const MAXL = 5;
@@ -522,6 +526,7 @@ function build(){
   ensureLists();
   let [d, b] = section('income', 'sIncome', 'hIncome', isOpen('income', true));
   b.append(listBlock('emp'), numRow('empBik'), numRow('empDed', 'empDedS'), listBlock('biz'));
+  { const box = el('div', 'grp'); box.id = 'lb_rent'; const h = el('div', 'grp-h'); h.append(el('strong', null, t('rentTitle'))); box.append(h, el('p', 'hint', t('rentHint')), numRow('rentGross'), numRow('rentExp', 'rentExpS')); b.append(box); }
   NUMS.income.forEach(([k, s]) => b.append(numRow(k, s)));
   { const dOpen = document.getElementById('info_div'); const d2 = el('details', 'info'); d2.id = 'info_div'; d2.open = !!(dOpen && dOpen.open); d2.append(el('summary', null, t('divWhat'))); const ul = el('ul'); INFO.div[lang].forEach(x => ul.append(el('li', null, x))); d2.append(ul); b.append(d2); }
   form.append(d);
@@ -585,6 +590,7 @@ function stampText(d){ return t('gen') + ' ' + pad2(d.getDate()) + '/' + pad2(d.
 function render(){
   sumLists();
   ['emp', 'biz'].forEach(k => { const e = document.getElementById('tot_' + k); if (e) { e.lastChild.textContent = 'RM ' + fmt(k === 'emp' ? vals.empGross : vals.biz); e.style.display = vals[k + 'List'].length > 1 ? '' : 'none'; } });
+  { const off = !(+vals.rentGross > 0); const ri = document.getElementById('f_rentExp'); if (ri) { ri.disabled = off; const sm = ri.parentElement.querySelector('small'); if (sm) sm.textContent = t(off ? 'rentExpOff' : 'rentExpS'); } }
   const r = compute(vals); LAST = r;
   const rt = document.getElementById('relTab'); rt.textContent = '';
   relRows(r).forEach(([k, v]) => { const tr = el('tr'); tr.append(el('td', null, k), el('td', null, fmt(v))); rt.append(tr); });
@@ -625,7 +631,7 @@ function render(){
   const add = (txt, cls) => fl.append(el('li', cls || '', txt));
   if (r.divSI > 0) { add(t('fDiv', fmt(r.divSI))); add(t('fDivHow', fmt(r.divSI), fmt(r.agg), fmt(r.ci), fmt(r.divCI), fmt(r.divTax))); }
   else if (r.div > 0) add(t('fDivNil'), 'ok');
-  if (r.rentLoss > 0) add(t('fRent', fmt(r.rentLoss)));
+  if (r.rentLoss > 0) add(+vals.rentGross > 0 ? t('fRent', fmt(r.rentLoss)) : t('fRentNone', fmt(r.rentLoss)));
   if (r.donPaid > r.don) add(t('fDon', fmt(r.donPaid - r.don)));
   if (r.lost > 0) add(t('fLost', fmt(r.lost)));
   if (r.biz) add(t('fBiz'));
