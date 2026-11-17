@@ -218,7 +218,7 @@ details.info ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:col
 const P = {
   ya: 2026,
   bands: [[0,0],[5000,.01],[20000,.03],[35000,.06],[50000,.11],[70000,.19],[100000,.25],[400000,.26],[600000,.28],[2000000,.30]],
-  rebThr: 35000, rebSelf: 400, rebSpouse: 400, donPct: .10, divThr: 100000,
+  rebThr: 35000, rebSelf: 400, rebSpouse: 400, donPct: .10, divThr: 100000, divRate: .02,
   self: 9000, disSelf: 7000, spouse: 4000, disSpouse: 6000,
   c1: 2000, c2: 2000, c3: 8000, c4: 8000, c5: 8000,
   hlP1: 500000, hlC1: 7000, hlP2: 750000, hlC2: 5000,
@@ -258,7 +258,8 @@ function compute(v){
   const emp = Math.max(n('empGross') + n('empBik') - n('empDed'), 0);
   const rent = Math.max(n('rentGross') - n('rentExp'), 0);
   const rentLoss = Math.max(n('rentExp') - n('rentGross'), 0);
-  const agg = emp + n('biz') + rent + n('interest') + n('other');
+  const divSI = Math.max(n('div') - P.divThr, 0);
+  const agg = emp + n('biz') + rent + n('interest') + n('other') + divSI;
   const don = Math.min(n('DON'), r2(P.donPct * agg));
   const total = agg - don;
   const status = [
@@ -281,16 +282,22 @@ function compute(v){
   const relPaid = groups.reduce((s, g) => s + g.claim, 0);
   const reliefs = r2(relStatus + relPaid);
   const ci = Math.max(r2(total - reliefs), 0);
-  const tb = taxOn(ci);
+  const divCI = agg > 0 ? Math.min(Math.floor(divSI / agg * ci), ci) : 0;
+  const divTax = r2(divCI * P.divRate);
+  const ciScale = r2(ci - divCI);
+  const tb = taxOn(ciScale);
+  const tax = r2(tb.tax + divTax);
   const rebSelf = ci <= P.rebThr ? P.rebSelf : 0;
   const rebSpouse = ci <= P.rebThr && v.spouse ? P.rebSpouse : 0;
-  const rebates = Math.min(rebSelf + rebSpouse + n('ZKT') + n('levy'), tb.tax);
-  const net = r2(tb.tax - rebates);
+  const rebates = Math.min(rebSelf + rebSpouse + n('ZKT') + n('levy'), tax);
+  const net = r2(tax - rebates);
   const paid = n('pcb') + n('cp500');
   const balance = r2(net - paid);
-  let mar = 0; P.bands.forEach(b => { if (ci >= b[0]) mar = b[1]; });
+  let mar = 0; P.bands.forEach(b => { if (ciScale >= b[0]) mar = b[1]; });
+  const divShare = agg > 0 ? divSI / agg : 0;
+  const relSave = mar * (1 - divShare) + P.divRate * divShare;
   return {emp, rent, rentLoss, agg, don, donPaid: n('DON'), total, status, relStatus, relPaid, reliefs, groups, ci,
-          tax: tb.tax, bands: tb.bands, rebSelf, rebSpouse, zakat: n('ZKT'), levy: n('levy'), rebates, net, paid, balance,
+          tax, taxScale: tb.tax, divSI, divCI, divTax, ciScale, relSave, bands: tb.bands, rebSelf, rebSpouse, zakat: n('ZKT'), levy: n('levy'), rebates, net, paid, balance,
           eff: agg ? net / agg : 0, mar, lost: r2(groups.reduce((s, g) => s + g.lost, 0)), div: n('div'), biz: n('biz')};
 }
 const EXAMPLE = {empGross:108000, biz:6000, rentGross:18000, rentExp:7500, div:3000, c1:1, pcb:7800,
@@ -316,7 +323,12 @@ const T = {
   biz:['Business or freelance income, net','生意或自由职业收入（净额）'], bizS:['After expenses and capital allowances','已扣除费用及资本免税额'],
   rentGross:['Rental income, gross','租金收入（总额）'], rentExp:['Rental expenses','租金相关费用'], rentExpS:['Assessment, quit rent, loan interest, repairs, insurance','门牌税、地税、贷款利息、维修、保险'],
   interest:['Taxable interest','应课税利息'], other:['Other taxable income','其他应课税收入'],
-  div:['Dividends received (not taxed here)','已收股息（此处不计税）'],
+  div:['Dividends from Malaysian companies','马来西亚公司股息'], divS:['Total received in 2026. 2% tax applies only above RM100,000','2026 年收到的总额。超过 RM100,000 才征 2% 股息税'],
+  divWhat:['Which dividends count?','哪些股息要算？'],
+  lDiv:['Dividends above RM100,000','超过 RM100,000 的股息'], lCIDiv:['Dividend part, taxed at 2%','其中股息部分（税率 2%）'], lCIScale:['Balance, taxed at scale rates','余额（按累进税率）'],
+  lTaxDiv:['Dividend tax at 2%','股息税 (2%)'], lTaxScale:['Tax at scale rates','累进税率税额'],
+  fDivNil:['Dividends are RM100,000 or below, so no dividend tax applies and they are left out of the computation.','股息不超过 RM100,000，无需缴股息税，也不计入税务计算。'],
+  fDivHow:['Dividend part of chargeable income = RM{0} ÷ RM{1} × RM{2} = RM{3} (sen dropped), taxed at 2% = RM{4}.','应课税收入中的股息部分 = RM{0} ÷ RM{1} × RM{2} = RM{3}（舍去仙），按 2% 计税 = RM{4}。'],
   disSelf:['I am a registered disabled individual','本人为注册残障人士'], spouse:['Claim spouse relief','申请配偶扣除'],
   spouseS:['Spouse has no income, or joint assessment in your name','配偶无收入，或以您的名义合并评税'],
   disSpouse:['My spouse is disabled','配偶为残障人士'], alimony:['Alimony paid to former wife','支付前妻的赡养费'],
@@ -364,15 +376,15 @@ const T = {
   lTax:['Income tax','所得税'], lReb:['Less rebates','减：回扣'], lNet:['Tax for the year','全年税额'], lPaid:['Less tax already paid','减：已缴税款'], lBal:['Balance payable / (overpaid)','应补缴 /（多缴）'],
   fLost:['RM{0} was paid but cannot be claimed because it is over a limit.','有 RM{0} 的支出因超过上限而无法扣除。'],
   fReb:['Chargeable income is RM35,000 or below, so the RM400 rebate applies.','应课税收入不超过 RM35,000，可享 RM400 回扣。'],
-  fDiv:['Dividends are above RM100,000. The 2% dividend tax is not computed here.','股息超过 RM100,000。本工具不计算 2% 股息税。'],
+  fDiv:['Dividends are RM{0} above the RM100,000 threshold. Only that excess enters the computation.','股息超出 RM100,000 门槛 RM{0}。只有超出的部分计入税务计算。'],
   fBiz:['You have business income, so you file Form B, not Form BE.','您有生意收入，须提交 B 表格，而非 BE 表格。'],
   fRent:['Rental expenses exceed rental income by RM{0}. The loss is not set off against other income.','租金费用超出租金收入 RM{0}。此亏损不可抵扣其他收入。'],
   fDon:['Donations above 10% of aggregate income are not deducted (RM{0} left out).','超过总收入 10% 的捐款不可扣除（RM{0} 未计入）。'],
   fNext:['Each further RM1,000 of relief saves about RM{0} in tax.','每增加 RM1,000 扣除额，约可节省 RM{0} 税款。'],
   fOk:['No issues found.','未发现问题。'],
   above:['Above','超过'],
-  f1:['An estimate for a resident individual under separate assessment. It does not cover non-residents, joint assessment, the 2% dividend tax, business losses or foreign income.','本工具仅为估算，适用于分开评税的税务居民个人，不涵盖非居民、合并评税、2% 股息税、生意亏损及海外收入。'],
-  f2:['Rates and limits for YA 2026 were checked on 11 November 2026. Budget 2027 changes start from YA 2027 and are not included. Eligibility conditions are not tested.','2026 课税年的税率与上限已于 2026 年 11 月 11 日核对。2027 年财政预算案的修改自 2027 课税年起生效，未包含在内。本工具不审核扣除资格。'],
+  f1:['An estimate for a resident individual under separate assessment. It does not cover non-residents, joint assessment, the 2% tax on LLP profit distributions, business losses or foreign income.','本工具仅为估算，适用于分开评税的税务居民个人，不涵盖非居民、合并评税、有限责任合伙 (LLP) 盈利分配的 2% 税、生意亏损及海外收入。'],
+  f2:['Rates and limits for YA 2026 were checked on 11 November 2026, and the 2% dividend tax on 15 November 2026. Budget 2027 changes start from YA 2027 and are not included. Eligibility conditions are not tested.','2026 课税年的税率与上限已于 2026 年 11 月 11 日核对，2% 股息税已于 2026 年 11 月 15 日核对。2027 年财政预算案的修改自 2027 课税年起生效，未包含在内。本工具不审核扣除资格。'],
   f3:['Not tax advice and not affiliated with LHDN. Nothing you type leaves this device.','本工具并非税务意见，与内陆税收局 (LHDN) 无关联。您输入的资料不会离开此设备。']
 };
 const GUIDE = {
@@ -399,6 +411,23 @@ const GUIDE = {
   ]
 };
 const INFO = {
+  div: [[
+    'Count: dividends from Malaysian companies, listed on Bursa or private (Sdn Bhd), in cash or in kind, including shares held through a nominee.',
+    'Add up every dividend paid to you in 2026. The first RM100,000 is not taxed.',
+    'Do not count: EPF, LTAT, ASNB (ASB, ASM and similar) and unit trust distributions.',
+    'Do not count: dividends from outside Malaysia, co-operatives, closed-end funds and Labuan entities.',
+    'Do not count: dividends paid out of pioneer status, reinvestment allowance or exempt shipping profits. The dividend voucher normally says so.',
+    'LLP profit distributions are a separate 2% tax from YA 2026 and are not computed here.',
+    'Keep every dividend voucher for 7 years.'
+  ], [
+    '要算：马来西亚公司派发的股息，包括上市公司 (Bursa) 和私人有限公司 (Sdn Bhd)，现金或实物皆算，通过代名人 (nominee) 持股的也算。',
+    '把 2026 年内收到的所有股息加总。首 RM100,000 不征税。',
+    '不算：公积金 (EPF)、武装部队基金 (LTAT)、ASNB（ASB、ASM 等）及单位信托的分红。',
+    '不算：来自马来西亚境外的股息，以及合作社、封闭式基金和纳闽 (Labuan) 实体的股息。',
+    '不算：从新兴工业地位、再投资津贴或免税船运盈利中派发的股息。股息单上通常会注明。',
+    '有限责任合伙 (LLP) 的盈利分配自 2026 课税年起另征 2% 税，本工具不计算。',
+    '所有股息单须保存 7 年。'
+  ]],
   HS3: [[
     'From YA 2026: any vaccine registered with the National Pharmaceutical Regulatory Agency (NPRA).',
     'Already covered before 2026: influenza, pneumococcal, HPV, rotavirus, varicella (chickenpox), meningococcal, Tdap and COVID-19.',
@@ -422,7 +451,7 @@ const fmt0 = x => Math.round(x).toLocaleString('en-MY');
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
 
 const NUMS = {
-  income: [['rentGross'],['rentExp','rentExpS'],['interest'],['other'],['div']],
+  income: [['rentGross'],['rentExp','rentExpS'],['interest'],['other'],['div','divS']],
   paid: [['DON','DONS'],['ZKT','ZKTS'],['levy'],['pcb','pcbS'],['cp500']]
 };
 const MAXL = 5;
@@ -493,7 +522,9 @@ function build(){
   ensureLists();
   let [d, b] = section('income', 'sIncome', 'hIncome', isOpen('income', true));
   b.append(listBlock('emp'), numRow('empBik'), numRow('empDed', 'empDedS'), listBlock('biz'));
-  NUMS.income.forEach(([k, s]) => b.append(numRow(k, s))); form.append(d);
+  NUMS.income.forEach(([k, s]) => b.append(numRow(k, s)));
+  { const dOpen = document.getElementById('info_div'); const d2 = el('details', 'info'); d2.id = 'info_div'; d2.open = !!(dOpen && dOpen.open); d2.append(el('summary', null, t('divWhat'))); const ul = el('ul'); INFO.div[lang].forEach(x => ul.append(el('li', null, x))); d2.append(ul); b.append(d2); }
+  form.append(d);
   [d, b] = section('family', 'sFamily', 'hFamily', isOpen('family', true));
   b.append(chkRow('disSelf'), chkRow('spouse', 'spouseS'), chkRow('disSpouse'), numRow('alimony'),
            numRow('c1', 'cS'), numRow('c2'), numRow('c3'), numRow('c4'), numRow('c5'), chkRow('hl', 'hlS'), numRow('hlPrice'));
@@ -534,6 +565,15 @@ function build(){
   render();
 }
 let LAST = null;
+function compList(r){
+  const d = r.divSI > 0;
+  const rows = [['lEmp', r.emp], ['lBiz', r.biz], ['lRent', r.rent], ['lInt', (+vals.interest || 0) + (+vals.other || 0)]];
+  if (d) rows.push(['lDiv', r.divSI]);
+  rows.push(['lAgg', r.agg, 't'], ['lDon', -r.don, 'm'], ['lTot', r.total], ['lRelS', -r.relStatus, 'm'], ['lRelP', -r.relPaid, 'm'], ['lCI', r.ci, 't']);
+  if (d) rows.push(['lCIDiv', r.divCI], ['lCIScale', r.ciScale], ['lTaxDiv', r.divTax], ['lTaxScale', r.taxScale]);
+  rows.push(['lTax', r.tax, d ? 't' : ''], ['lReb', -r.rebates, 'm'], ['lNet', r.net, 't'], ['lPaid', -r.paid, 'm'], ['lBal', r.balance, 't']);
+  return rows;
+}
 function relRows(r){
   const out = [];
   r.status.forEach(([k, v]) => { if (v > 0) out.push([t('r' + k), v]); });
@@ -559,9 +599,7 @@ function render(){
   document.getElementById('barTax').textContent = 'RM ' + fmt(r.net);
   document.getElementById('barBal').textContent = 'RM ' + fmt(Math.abs(r.balance));
   document.getElementById('barLabel').textContent = r.balance < 0 ? t('barRef') : t('barPay');
-  const rows = [['lEmp', r.emp], ['lBiz', r.biz], ['lRent', r.rent], ['lInt', (+vals.interest || 0) + (+vals.other || 0)], ['lAgg', r.agg, 't'],
-    ['lDon', -r.don, 'm'], ['lTot', r.total], ['lRelS', -r.relStatus, 'm'], ['lRelP', -r.relPaid, 'm'], ['lCI', r.ci, 't'],
-    ['lTax', r.tax], ['lReb', -r.rebates, 'm'], ['lNet', r.net, 't'], ['lPaid', -r.paid, 'm'], ['lBal', r.balance, 't']];
+  const rows = compList(r);
   const tb = document.getElementById('comp'); tb.textContent = '';
   rows.forEach(([k, v, c]) => { const tr = el('tr', c || ''); tr.append(el('td', null, t(k)), el('td', null, fmt(v))); tb.append(tr); });
   const bd = document.getElementById('bands'); bd.textContent = '';
@@ -585,13 +623,14 @@ function render(){
   document.getElementById('sum_paid').textContent = 'RM ' + fmt0(r.paid);
   const fl = document.getElementById('flags'); fl.textContent = '';
   const add = (txt, cls) => fl.append(el('li', cls || '', txt));
-  if (r.div > P.divThr) add(t('fDiv'), 'bad');
+  if (r.divSI > 0) { add(t('fDiv', fmt(r.divSI))); add(t('fDivHow', fmt(r.divSI), fmt(r.agg), fmt(r.ci), fmt(r.divCI), fmt(r.divTax))); }
+  else if (r.div > 0) add(t('fDivNil'), 'ok');
   if (r.rentLoss > 0) add(t('fRent', fmt(r.rentLoss)));
   if (r.donPaid > r.don) add(t('fDon', fmt(r.donPaid - r.don)));
   if (r.lost > 0) add(t('fLost', fmt(r.lost)));
   if (r.biz) add(t('fBiz'));
   if (r.agg > 0 && r.ci <= P.rebThr) add(t('fReb'), 'ok');
-  if (r.mar > 0) add(t('fNext', fmt0(1000 * r.mar)), 'ok');
+  if (r.relSave > 0 && r.ci > 0) add(t('fNext', fmt0(1000 * r.relSave)), 'ok');
   if (!fl.children.length) add(t('fOk'), 'ok');
 }
 const parse = s => { const x = parseFloat(String(s).replace(/,/g, '')); return isFinite(x) && x > 0 ? x : 0; };
@@ -618,9 +657,7 @@ document.getElementById('form').addEventListener('click', e => {
   isExample = false; render(); save();
 });
 function compRows(r){
-  return [['lEmp', r.emp], ['lBiz', r.biz], ['lRent', r.rent], ['lInt', (+vals.interest || 0) + (+vals.other || 0)], ['lAgg', r.agg, 1],
-    ['lDon', -r.don], ['lTot', r.total], ['lRelS', -r.relStatus], ['lRelP', -r.relPaid], ['lCI', r.ci, 1],
-    ['lTax', r.tax], ['lReb', -r.rebates], ['lNet', r.net, 1], ['lPaid', -r.paid], ['lBal', r.balance, 1]].map(([k, v, b]) => [t(k), v, b]);
+  return compList(r).map(([k, v, c]) => [t(k), v, c === 't' ? 1 : 0]);
 }
 function makeImage(r, when){
   const W = 1080, PADX = 60, RIGHT = W - PADX, DISP = '"Bricolage Grotesque","Noto Sans SC",sans-serif', BODY = '"IBM Plex Sans","Noto Sans SC",sans-serif';
